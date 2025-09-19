@@ -1,19 +1,17 @@
-version: "3.8"
-
 services:
   db:
     image: postgres:15-alpine
     container_name: expense_tracker_database
     environment:
-      POSTGRES_DB: expense_tracker_api_dev
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${DATABASE_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,16 +21,26 @@ services:
     container_name: expense_tracker_backend
     working_dir: /app
     ports:
-      - "4000:4000"
+      - "${PORT}:4000"
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: ecto://postgres:postgres@db/expense_tracker_api_dev
-      SECRET_KEY_BASE: your-secret-key-base-here-change-this-in-production
-      PHX_HOST: localhost
-      PORT: 4000
-      MIX_ENV: dev
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_PORT: ${DATABASE_PORT}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      GUARDIAN_SECRET_KEY: ${GUARDIAN_SECRET_KEY}
+      PHX_HOST: ${PHX_HOST}
+      PHX_SERVER: ${PHX_SERVER}
+      PORT: ${PORT}
+      MIX_ENV: ${MIX_ENV}
+      POOL_SIZE: ${POOL_SIZE}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS}
     volumes:
       - ./expense_tracker_api:/app
       - elixir_deps:/app/deps
