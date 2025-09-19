@@ -48,5 +48,6 @@ defmodule ExpenseTrackerApiWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+  plug OpenApiSpex.Plug.PutApiSpec, module: ExpenseTrackerApiWeb.ApiSpec
   plug ExpenseTrackerApiWeb.Router
 end

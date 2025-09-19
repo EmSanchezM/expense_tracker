@@ -55,6 +55,7 @@ defmodule ExpenseTrackerApi.MixProject do
       {:guardian, "~> 2.3"},
       {:pbkdf2_elixir, "~> 2.0"},
       {:cors_plug, "~> 3.0"},
+      {:open_api_spex, "~> 3.6"},
       {:ex_machina, "~> 2.7", only: :test},
       {:dotenv, "~> 3.0", only: [:dev, :test]}
     ]

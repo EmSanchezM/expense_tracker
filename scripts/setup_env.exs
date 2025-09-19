@@ -18,7 +18,7 @@ defmodule EnvSetup do
 
     env_content = """
     # Database Configuration
-    DATABASE_URL=ecto://postgres:postgres@localhost/expense_tracker_api_dev
+    DATABASE_URL=postgres://postgres:postgres@localhost/expense_tracker_api_dev
 
     # Server Configuration
     PORT=4000

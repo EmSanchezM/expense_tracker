@@ -74,4 +74,13 @@ cd expense_tracker_api
 mix phx.server
 ```
 
+**Enable API documentation with Open API**
+```bash
+# Enable API documentation in production
+export ENABLE_API_DOCS=true
+
+# Or in your .env file
+ENABLE_API_DOCS=true
+```
+
 The API will be available at `http://localhost:4000`

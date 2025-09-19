@@ -1,10 +1,50 @@
 defmodule ExpenseTrackerApiWeb.ExpenseController do
   use ExpenseTrackerApiWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias ExpenseTrackerApi.Expenses
   alias Guardian.Plug
+  alias ExpenseTrackerApiWeb.Schemas.ExpenseSchema
+  alias ExpenseTrackerApiWeb.Schemas.ErrorSchema
 
-  action_fallback ExpenseTrackerApiWeb.FallbackController
+  action_fallback(ExpenseTrackerApiWeb.FallbackController)
+
+  tags(["Expenses"])
+
+  operation(:index,
+    summary: "List user expenses",
+    description:
+      "Retrieve a list of expenses for the authenticated user with optional filtering by time period or date range",
+    parameters: [
+      period: [
+        in: :query,
+        description: "Predefined time period filter",
+        schema: %OpenApiSpex.Schema{
+          type: :string,
+          enum: ["last_week", "last_month", "last_3_months"]
+        },
+        example: "last_month"
+      ],
+      from_date: [
+        in: :query,
+        description: "Start date for custom date range filter (YYYY-MM-DD format)",
+        schema: %OpenApiSpex.Schema{type: :string, format: :date},
+        example: "2024-01-01"
+      ],
+      to_date: [
+        in: :query,
+        description: "End date for custom date range filter (YYYY-MM-DD format)",
+        schema: %OpenApiSpex.Schema{type: :string, format: :date},
+        example: "2024-01-31"
+      ]
+    ],
+    responses: [
+      ok:
+        {"Expenses retrieved successfully", "application/json", ExpenseSchema.ExpenseListResponse},
+      unauthorized: {"Authentication required", "application/json", ErrorSchema.UnauthorizedError}
+    ],
+    security: [%{"bearerAuth" => []}]
+  )
 
   @doc """
   List user expenses with optional date filters
@@ -19,6 +59,28 @@ defmodule ExpenseTrackerApiWeb.ExpenseController do
     |> put_status(:ok)
     |> render(:index, expenses: expenses)
   end
+
+  operation(:create,
+    summary: "Create a new expense",
+    description: "Create a new expense record for the authenticated user",
+    request_body:
+      {"Expense data", "application/json",
+       %OpenApiSpex.Schema{
+         type: :object,
+         properties: %{
+           expense: ExpenseSchema.ExpenseRequest
+         },
+         required: [:expense]
+       }},
+    responses: [
+      created:
+        {"Expense created successfully", "application/json", ExpenseSchema.ExpenseResponse},
+      unauthorized:
+        {"Authentication required", "application/json", ErrorSchema.UnauthorizedError},
+      unprocessable_entity: {"Validation errors", "application/json", ErrorSchema.ValidationError}
+    ],
+    security: [%{"bearerAuth" => []}]
+  )
 
   @doc """
   Create a new expense
@@ -40,6 +102,26 @@ defmodule ExpenseTrackerApiWeb.ExpenseController do
     end
   end
 
+  operation(:show,
+    summary: "Get a specific expense",
+    description: "Retrieve a single expense by ID for the authenticated user",
+    parameters: [
+      id: [
+        in: :path,
+        description: "Expense ID",
+        schema: %OpenApiSpex.Schema{type: :integer},
+        example: 1
+      ]
+    ],
+    responses: [
+      ok: {"Expense retrieved successfully", "application/json", ExpenseSchema.ExpenseResponse},
+      unauthorized:
+        {"Authentication required", "application/json", ErrorSchema.UnauthorizedError},
+      not_found: {"Expense not found", "application/json", ErrorSchema.NotFoundError}
+    ],
+    security: [%{"bearerAuth" => []}]
+  )
+
   @doc """
   Get a specific expense
   """
@@ -60,6 +142,36 @@ defmodule ExpenseTrackerApiWeb.ExpenseController do
         |> render(:not_found, message: "Expense not found")
     end
   end
+
+  operation(:update,
+    summary: "Update an expense",
+    description: "Update an existing expense for the authenticated user",
+    parameters: [
+      id: [
+        in: :path,
+        description: "Expense ID",
+        schema: %OpenApiSpex.Schema{type: :integer},
+        example: 1
+      ]
+    ],
+    request_body:
+      {"Updated expense data", "application/json",
+       %OpenApiSpex.Schema{
+         type: :object,
+         properties: %{
+           expense: ExpenseSchema.ExpenseRequest
+         },
+         required: [:expense]
+       }},
+    responses: [
+      ok: {"Expense updated successfully", "application/json", ExpenseSchema.ExpenseResponse},
+      unauthorized:
+        {"Authentication required", "application/json", ErrorSchema.UnauthorizedError},
+      not_found: {"Expense not found", "application/json", ErrorSchema.NotFoundError},
+      unprocessable_entity: {"Validation errors", "application/json", ErrorSchema.ValidationError}
+    ],
+    security: [%{"bearerAuth" => []}]
+  )
 
   @doc """
   Update an expense
@@ -90,6 +202,38 @@ defmodule ExpenseTrackerApiWeb.ExpenseController do
         |> render(:not_found, message: "Expense not found")
     end
   end
+
+  operation(:delete,
+    summary: "Delete an expense",
+    description: "Delete an existing expense for the authenticated user",
+    parameters: [
+      id: [
+        in: :path,
+        description: "Expense ID",
+        schema: %OpenApiSpex.Schema{type: :integer},
+        example: 1
+      ]
+    ],
+    responses: [
+      ok:
+        {"Expense deleted successfully", "application/json",
+         %OpenApiSpex.Schema{
+           type: :object,
+           properties: %{
+             message: %OpenApiSpex.Schema{
+               type: :string,
+               example: "Expense deleted successfully"
+             }
+           }
+         }},
+      unauthorized:
+        {"Authentication required", "application/json", ErrorSchema.UnauthorizedError},
+      not_found: {"Expense not found", "application/json", ErrorSchema.NotFoundError},
+      internal_server_error:
+        {"Internal server error", "application/json", ErrorSchema.InternalServerError}
+    ],
+    security: [%{"bearerAuth" => []}]
+  )
 
   @doc """
   Delete an expense
@@ -164,6 +308,4 @@ defmodule ExpenseTrackerApiWeb.ExpenseController do
   end
 
   defp maybe_add_date_range_filter(filters, _params), do: filters
-
-
 end

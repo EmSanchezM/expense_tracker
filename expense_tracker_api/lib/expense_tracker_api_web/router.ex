@@ -10,6 +10,13 @@ defmodule ExpenseTrackerApiWeb.Router do
                      String.split(origins, ",")
                  end)
 
+  pipeline :browser do
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
+  end
+
   pipeline :api do
     # Configure CORS for frontend integration
     # - Allows common frontend development ports
@@ -61,6 +68,21 @@ defmodule ExpenseTrackerApiWeb.Router do
     # Authentication routes
     post("/auth/register", AuthController, :register)
     post("/auth/login", AuthController, :login)
+  end
+
+  # API Documentation routes (environment-controlled)
+  # Only register these routes if documentation is enabled
+  if ExpenseTrackerApiWeb.ApiDocsConfig.enabled?() do
+    scope "/api", ExpenseTrackerApiWeb do
+      pipe_through(:browser)
+      get("/docs", SwaggerController, :index)
+    end
+
+    scope "/api", ExpenseTrackerApiWeb do
+      pipe_through(:api)
+      # OpenAPI specification endpoint
+      get("/openapi", SwaggerController, :spec)
+    end
   end
 
   scope "/api", ExpenseTrackerApiWeb do
