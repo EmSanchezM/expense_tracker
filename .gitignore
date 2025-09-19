@@ -25,5 +25,9 @@
 # Ignore package tarball (built via "mix hex.build").
 /expense_tracker_api/expense_tracker_api-*.tar
 
+# Environment variables
+.env
+.env.local
+
 # Ignore agents
 .kiro/*
