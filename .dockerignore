@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Elixir
+expense_tracker_api/_build/
+expense_tracker_api/deps/
+expense_tracker_api/cover/
+expense_tracker_api/doc/
+expense_tracker_api/.fetch
+
+# Phoenix
+expense_tracker_api/priv/static/assets/
+expense_tracker_api/priv/static/cache_manifest.json
+
+# Logs
+expense_tracker_api/log/
+*.log
+
+# Temporary files
+expense_tracker_api/tmp/
+.DS_Store
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.local
+
+# Node modules (if any)
+node_modules/
+
+# Test coverage
+expense_tracker_api/cover/
+
+# Kiro
+.kiro/

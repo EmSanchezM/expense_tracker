@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: expense_tracker_database
+    environment:
+      POSTGRES_DB: expense_tracker_api_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    image: elixir:latest
+    container_name: expense_tracker_backend
+    working_dir: /app
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ecto://postgres:postgres@db/expense_tracker_api_dev
+      SECRET_KEY_BASE: your-secret-key-base-here-change-this-in-production
+      PHX_HOST: localhost
+      PORT: 4000
+      MIX_ENV: dev
+    volumes:
+      - ./expense_tracker_api:/app
+      - elixir_deps:/app/deps
+      - elixir_build:/app/_build
+    command: sh -c "
+      apt-get update &&
+      apt-get install -y build-essential npm git python3 inotify-tools &&
+      mix local.hex --force &&
+      mix local.rebar --force &&
+      mix deps.get &&
+      mix ecto.setup &&
+      mix phx.server"
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
+  elixir_deps:
+  elixir_build:
