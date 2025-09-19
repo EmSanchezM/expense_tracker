@@ -1,13 +1,14 @@
 defmodule ExpenseTrackerApiWeb.Router do
   use ExpenseTrackerApiWeb, :router
 
-  # Helper function to get CORS origins from environment variable
-  defp get_cors_origins do
-    case System.get_env("CORS_ORIGINS") do
-      nil -> ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
-      origins -> String.split(origins, ",")
-    end
-  end
+  # Get CORS origins from environment variable at compile time
+  @cors_origins (case System.get_env("CORS_ORIGINS") do
+                   nil ->
+                     ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+
+                   origins ->
+                     String.split(origins, ",")
+                 end)
 
   pipeline :api do
     # Configure CORS for frontend integration
@@ -15,7 +16,7 @@ defmodule ExpenseTrackerApiWeb.Router do
     # - Enables credentials for JWT authentication
     # - Includes Authorization header for JWT tokens
     plug(CORSPlug,
-      origin: get_cors_origins(),
+      origin: @cors_origins,
       credentials: true,
       headers: [
         "Authorization",
