@@ -41,7 +41,6 @@ defmodule EnvSetup do
 
     File.write!(".env", env_content)
     IO.puts("✅ Generated .env file with new secret keys!")
-    IO.puts("📝 You can modify the values in .env as needed.")
   end
 
   def run do
