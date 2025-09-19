@@ -38,4 +38,40 @@ For the different expense categories, you can use the following list (feel free 
 Description project: [Roadmap.sh Backend](https://roadmap.sh/projects/expense-tracker-api).
 
 ## Getting started
-** Running environment development: `docker-compose -f compose.dev.yml up`
+
+### Environment Setup
+
+1. **Configure environment variables:**
+   ```bash
+   # Generate .env file with secure keys
+   elixir scripts/setup_env.exs
+   
+   # Or copy and edit manually
+   cp .env.example .env
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   cd expense_tracker_api
+   mix deps.get
+   ```
+
+3. **Setup database:**
+   ```bash
+   mix ecto.setup
+   ```
+
+### Running the Application
+
+**Development with Docker:**
+```bash
+docker-compose -f compose.dev.yml up
+```
+
+**Development locally:**
+```bash
+cd expense_tracker_api
+mix phx.server
+```
+
+The API will be available at `http://localhost:4000`
