@@ -24,6 +24,15 @@ defmodule ExpenseTrackerApiWeb.ApiSpec do
         2. Use the returned JWT token in the Authorization header: `Bearer <token>`
         3. The token will be validated for all protected endpoints
 
+        ### 🔐 JWT Authentication Quick Start
+
+        First, use the POST /api/auth/login endpoint to get your JWT token
+        Copy the token from the response (without quotes)
+        Click the "Authorize" button above
+        Paste your token in the "Value" field (no need to add "Bearer ")
+        Click "Authorize" and then "Close"
+        Now you can test all protected endpoints! 🎉
+
         ## Features
 
         - User registration and authentication
