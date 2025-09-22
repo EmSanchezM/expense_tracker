@@ -6,6 +6,7 @@ defmodule ExpenseTrackerApi.ExpensesTest do
 
   import ExpenseTrackerApi.AccountsFixtures
   import ExpenseTrackerApi.ExpensesFixtures
+  import Ecto.Changeset, only: [cast: 3, validate_required: 2, get_change: 2]
 
   describe "create_expense/2" do
     setup do
@@ -21,77 +22,201 @@ defmodule ExpenseTrackerApi.ExpensesTest do
       assert expense.description == "Test expense"
       assert expense.category == :groceries
       assert expense.date == Date.utc_today()
+      assert expense.currency == "USD"
       assert expense.user_id == user.id
     end
 
     test "creates expense with default date when not provided", %{user: user} do
-      attrs = valid_expense_attributes(%{date: nil})
+      attrs = valid_expense_attributes(%{"date" => nil})
 
       assert {:ok, %Expense{} = expense} = Expenses.create_expense(user.id, attrs)
       assert expense.date == Date.utc_today()
     end
 
     test "creates expense with default category when not provided", %{user: user} do
-      attrs = valid_expense_attributes(%{category: nil})
+      attrs = valid_expense_attributes(%{"category" => nil})
 
       assert {:ok, %Expense{} = expense} = Expenses.create_expense(user.id, attrs)
       assert expense.category == :others
     end
 
-    test "returns error changeset with invalid amount", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{amount: "invalid"})
+    test "creates expense with default currency when not provided", %{user: user} do
+      attrs = valid_expense_attributes(%{"currency" => nil})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:ok, %Expense{} = expense} = Expenses.create_expense(user.id, attrs)
+      assert expense.currency == "USD"
+    end
+
+    test "creates expense with valid currency codes", %{user: user} do
+      valid_currencies = ["USD", "EUR", "MXN", "GBP", "JPY", "CAD", "AUD", "CHF"]
+
+      for currency <- valid_currencies do
+        attrs = valid_expense_attributes(%{"currency" => currency})
+
+        assert {:ok, %Expense{} = expense} = Expenses.create_expense(user.id, attrs)
+        assert expense.currency == currency
+      end
+    end
+
+    test "returns error changeset with lowercase currency", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "usd"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with mixed case currency", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "Usd"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with currency shorter than 3 characters", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "US"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with currency longer than 3 characters", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "USDD"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with currency containing numbers", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "US1"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with currency containing special characters", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"currency" => "US$"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "creates expense with default currency when empty string provided", %{user: user} do
+      attrs = valid_expense_attributes(%{"currency" => ""})
+
+      # Empty string should be treated as nil and get default currency
+      assert {:ok, %Expense{} = expense} = Expenses.create_expense(user.id, attrs)
+      assert expense.currency == "USD"
+    end
+
+    test "currency field is required after default assignment", %{user: user} do
+      # Test that currency is in the required fields list
+      attrs = valid_expense_attributes(%{"user_id" => user.id})
+      # Remove currency to test default assignment
+      attrs = Map.delete(attrs, "currency")
+
+      # Create a changeset manually to test the validation
+      changeset =
+        ExpenseTrackerApi.Expenses.Expense.changeset(%ExpenseTrackerApi.Expenses.Expense{}, attrs)
+
+      # The changeset should be valid because default currency is applied
+      assert changeset.valid?
+      assert get_change(changeset, :currency) == "USD"
+
+      # Now test that currency is in the required fields by creating a changeset without defaults
+      required_fields = [:amount, :description, :category, :currency, :user_id]
+
+      changeset_without_defaults =
+        %ExpenseTrackerApi.Expenses.Expense{}
+        |> cast(attrs, [:amount, :description, :category, :date, :currency, :user_id])
+        |> validate_required(required_fields)
+
+      # Without the default currency function, it should fail validation because currency is required
+      refute changeset_without_defaults.valid?
+      assert %{currency: ["can't be blank"]} = errors_on(changeset_without_defaults)
+    end
+
+    test "returns error changeset with invalid amount", %{user: user} do
+      invalid_attrs = valid_expense_attributes(%{"amount" => "invalid"})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{amount: ["is invalid"]} = errors_on(changeset)
     end
 
     test "returns error changeset with negative amount", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{amount: "-10.50"})
+      invalid_attrs = valid_expense_attributes(%{"amount" => "-10.50"})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{amount: ["must be greater than 0"]} = errors_on(changeset)
     end
 
     test "returns error changeset with zero amount", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{amount: "0"})
+      invalid_attrs = valid_expense_attributes(%{"amount" => "0"})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{amount: ["must be greater than 0"]} = errors_on(changeset)
     end
 
     test "returns error changeset with missing description", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{description: nil})
+      invalid_attrs = valid_expense_attributes(%{"description" => nil})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{description: ["can't be blank"]} = errors_on(changeset)
     end
 
     test "returns error changeset with empty description", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{description: ""})
+      invalid_attrs = valid_expense_attributes(%{"description" => ""})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{description: ["can't be blank"]} = errors_on(changeset)
     end
 
     test "returns error changeset with too long description", %{user: user} do
       long_description = String.duplicate("a", 256)
-      invalid_attrs = valid_expense_attributes(%{description: long_description})
+      invalid_attrs = valid_expense_attributes(%{"description" => long_description})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{description: ["should be at most 255 character(s)"]} = errors_on(changeset)
     end
 
     test "returns error changeset with invalid category", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{category: "invalid_category"})
+      invalid_attrs = valid_expense_attributes(%{"category" => "invalid_category"})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{category: ["is invalid"]} = errors_on(changeset)
     end
 
     test "returns error changeset with missing amount", %{user: user} do
-      invalid_attrs = valid_expense_attributes(%{amount: nil})
+      invalid_attrs = valid_expense_attributes(%{"amount" => nil})
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.create_expense(user.id, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.create_expense(user.id, invalid_attrs)
+
       assert %{amount: ["can't be blank"]} = errors_on(changeset)
     end
   end
@@ -113,7 +238,10 @@ defmodule ExpenseTrackerApi.ExpensesTest do
       assert retrieved_expense.description == expense.description
     end
 
-    test "raises Ecto.NoResultsError when expense doesn't belong to user", %{other_user: other_user, expense: expense} do
+    test "raises Ecto.NoResultsError when expense doesn't belong to user", %{
+      other_user: other_user,
+      expense: expense
+    } do
       assert_raise Ecto.NoResultsError, fn ->
         Expenses.get_user_expense!(other_user.id, expense.id)
       end
@@ -135,9 +263,9 @@ defmodule ExpenseTrackerApi.ExpensesTest do
 
     test "updates the expense with valid data", %{expense: expense} do
       update_attrs = %{
-        amount: "200.75",
-        description: "Updated expense",
-        category: "electronics"
+        "amount" => "200.75",
+        "description" => "Updated expense",
+        "category" => "electronics"
       }
 
       assert {:ok, %Expense{} = updated_expense} = Expenses.update_expense(expense, update_attrs)
@@ -147,19 +275,40 @@ defmodule ExpenseTrackerApi.ExpensesTest do
       assert updated_expense.id == expense.id
     end
 
-    test "returns error changeset with invalid data", %{expense: expense} do
-      invalid_attrs = %{amount: "invalid", description: ""}
+    test "updates expense with valid currency", %{expense: expense} do
+      update_attrs = %{"currency" => "EUR"}
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.update_expense(expense, invalid_attrs)
+      assert {:ok, %Expense{} = updated_expense} = Expenses.update_expense(expense, update_attrs)
+      assert updated_expense.currency == "EUR"
+      assert updated_expense.id == expense.id
+    end
+
+    test "returns error changeset with invalid currency format", %{expense: expense} do
+      invalid_attrs = %{"currency" => "eur"}
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.update_expense(expense, invalid_attrs)
+
+      assert %{currency: ["must be a valid 3-letter ISO currency code"]} = errors_on(changeset)
+    end
+
+    test "returns error changeset with invalid data", %{expense: expense} do
+      invalid_attrs = %{"amount" => "invalid", "description" => ""}
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.update_expense(expense, invalid_attrs)
+
       errors = errors_on(changeset)
       assert %{amount: ["is invalid"]} = errors
       assert %{description: ["can't be blank"]} = errors
     end
 
     test "returns error changeset with negative amount", %{expense: expense} do
-      invalid_attrs = %{amount: "-50.00"}
+      invalid_attrs = %{"amount" => "-50.00"}
 
-      assert {:error, %Ecto.Changeset{} = changeset} = Expenses.update_expense(expense, invalid_attrs)
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Expenses.update_expense(expense, invalid_attrs)
+
       assert %{amount: ["must be greater than 0"]} = errors_on(changeset)
     end
   end
@@ -173,7 +322,10 @@ defmodule ExpenseTrackerApi.ExpensesTest do
 
     test "deletes the expense", %{expense: expense} do
       assert {:ok, %Expense{}} = Expenses.delete_expense(expense)
-      assert_raise Ecto.NoResultsError, fn -> Expenses.get_user_expense!(expense.user_id, expense.id) end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Expenses.get_user_expense!(expense.user_id, expense.id)
+      end
     end
   end
 
@@ -188,13 +340,23 @@ defmodule ExpenseTrackerApi.ExpensesTest do
       last_month = Date.add(today, -20)
       three_months_ago = Date.add(today, -80)
 
-      expense_today = expense_fixture(user, %{description: "Today expense", date: today})
-      expense_last_week = expense_fixture(user, %{description: "Last week expense", date: last_week})
-      expense_last_month = expense_fixture(user, %{description: "Last month expense", date: last_month})
-      expense_three_months_ago = expense_fixture(user, %{description: "Three months ago expense", date: three_months_ago})
+      expense_today = expense_fixture(user, %{"description" => "Today expense", "date" => today})
+
+      expense_last_week =
+        expense_fixture(user, %{"description" => "Last week expense", "date" => last_week})
+
+      expense_last_month =
+        expense_fixture(user, %{"description" => "Last month expense", "date" => last_month})
+
+      expense_three_months_ago =
+        expense_fixture(user, %{
+          "description" => "Three months ago expense",
+          "date" => three_months_ago
+        })
 
       # Create expense for other user to ensure isolation
-      _other_user_expense = expense_fixture(other_user, %{description: "Other user expense", date: today})
+      _other_user_expense =
+        expense_fixture(other_user, %{"description" => "Other user expense", "date" => today})
 
       %{
         user: user,
@@ -212,11 +374,11 @@ defmodule ExpenseTrackerApi.ExpensesTest do
       assert length(expenses) == 4
       # Should be ordered by date descending
       assert Enum.map(expenses, & &1.description) == [
-        "Today expense",
-        "Last week expense",
-        "Last month expense",
-        "Three months ago expense"
-      ]
+               "Today expense",
+               "Last week expense",
+               "Last month expense",
+               "Three months ago expense"
+             ]
     end
 
     test "returns only user's expenses, not other users'", %{user: user, other_user: other_user} do

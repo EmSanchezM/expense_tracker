@@ -8,13 +8,15 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
     amount: "100.50",
     description: "Test expense",
     category: "groceries",
-    date: "2023-12-01"
+    date: "2023-12-01",
+    currency: "USD"
   }
 
   @invalid_expense_attrs %{
     amount: "invalid",
     description: "",
-    category: "invalid_category"
+    category: "invalid_category",
+    currency: "invalid_currency"
   }
 
   setup %{conn: conn} do
@@ -26,9 +28,8 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
   describe "GET /api/expenses" do
     test "lists all user expenses", %{conn: conn, user: user} do
       _expense1 = expense_fixture(user, %{"description" => "Expense 1"})
-      _expense2 = expense_fixture(user, %{"description" => "Expense 2"})
+      _expense2 = expense_fixture(user, %{"description" => "Expense 2", "currency" => "EUR"})
 
-      # Create expense for another user (should not appear)
       other_user = user_fixture()
       _other_expense = expense_fixture(other_user, %{"description" => "Other user expense"})
 
@@ -41,10 +42,14 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
       assert "Expense 1" in expense_descriptions
       assert "Expense 2" in expense_descriptions
       refute "Other user expense" in expense_descriptions
+
+      Enum.each(expenses, fn expense ->
+        assert Map.has_key?(expense, "currency")
+        assert expense["currency"] in ["USD", "EUR"]
+      end)
     end
 
     test "filters expenses by period", %{conn: conn, user: user} do
-      # Create expenses with different dates
       today = Date.utc_today()
       last_week = Date.add(today, -5)
       last_month = Date.add(today, -20)
@@ -55,7 +60,6 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
       expense_fixture(user, %{"description" => "Last month", "date" => last_month})
       expense_fixture(user, %{"description" => "Old", "date" => old_expense})
 
-      # Test last_week filter
       conn = get(conn, ~p"/api/expenses?period=last_week")
       assert %{"data" => expenses} = json_response(conn, 200)
       descriptions = Enum.map(expenses, & &1["description"])
@@ -100,11 +104,48 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
                  "amount" => "100.50",
                  "description" => "Test expense",
                  "category" => "groceries",
-                 "date" => "2023-12-01"
+                 "date" => "2023-12-01",
+                 "currency" => "USD"
                }
              } = json_response(conn, 201)
 
       assert is_integer(id)
+    end
+
+    test "creates expense with different currency", %{conn: conn} do
+      attrs = Map.put(@valid_expense_attrs, :currency, "EUR")
+      conn = post(conn, ~p"/api/expenses", expense: attrs)
+
+      assert %{
+               "data" => %{
+                 "currency" => "EUR"
+               }
+             } = json_response(conn, 201)
+    end
+
+    test "creates expense with default currency when not provided", %{conn: conn} do
+      attrs = Map.delete(@valid_expense_attrs, :currency)
+      conn = post(conn, ~p"/api/expenses", expense: attrs)
+
+      assert %{
+               "data" => %{
+                 "currency" => "USD"
+               }
+             } = json_response(conn, 201)
+    end
+
+    test "returns error with invalid currency format", %{conn: conn} do
+      attrs = Map.put(@valid_expense_attrs, :currency, "usd")
+      conn = post(conn, ~p"/api/expenses", expense: attrs)
+
+      assert %{
+               "error" => %{
+                 "message" => "Validation failed",
+                 "details" => details
+               }
+             } = json_response(conn, 422)
+
+      assert Map.has_key?(details, "currency")
     end
 
     test "returns error with invalid data", %{conn: conn} do
@@ -140,7 +181,8 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
                  "id" => id,
                  "amount" => amount,
                  "description" => description,
-                 "category" => category
+                 "category" => category,
+                 "currency" => currency
                }
              } = json_response(conn, 200)
 
@@ -148,6 +190,7 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
       assert amount == to_string(expense.amount)
       assert description == expense.description
       assert category == to_string(expense.category)
+      assert currency == expense.currency
     end
 
     test "returns 404 when expense doesn't exist", %{conn: conn} do
@@ -198,6 +241,38 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
              } = json_response(conn, 200)
 
       assert id == expense.id
+    end
+
+    test "updates expense currency", %{conn: conn, user: user} do
+      expense = expense_fixture(user)
+      update_attrs = %{currency: "EUR"}
+
+      conn = put(conn, ~p"/api/expenses/#{expense.id}", expense: update_attrs)
+
+      assert %{
+               "data" => %{
+                 "id" => id,
+                 "currency" => "EUR"
+               }
+             } = json_response(conn, 200)
+
+      assert id == expense.id
+    end
+
+    test "returns error when updating with invalid currency", %{conn: conn, user: user} do
+      expense = expense_fixture(user)
+      update_attrs = %{currency: "invalid"}
+
+      conn = put(conn, ~p"/api/expenses/#{expense.id}", expense: update_attrs)
+
+      assert %{
+               "error" => %{
+                 "message" => "Validation failed",
+                 "details" => details
+               }
+             } = json_response(conn, 422)
+
+      assert Map.has_key?(details, "currency")
     end
 
     test "returns error with invalid data", %{conn: conn, user: user} do
@@ -304,7 +379,6 @@ defmodule ExpenseTrackerApiWeb.ExpenseControllerTest do
         |> put_req_header("origin", "http://localhost:3000")
         |> get(~p"/api/expenses")
 
-      # Check that CORS headers are present even for authenticated endpoints
       assert get_resp_header(conn, "access-control-allow-origin") == ["http://localhost:3000"]
       assert get_resp_header(conn, "access-control-allow-credentials") == ["true"]
       assert json_response(conn, 200)

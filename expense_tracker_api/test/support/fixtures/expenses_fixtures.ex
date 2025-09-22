@@ -11,7 +11,8 @@ defmodule ExpenseTrackerApi.ExpensesFixtures do
       "amount" => "100.50",
       "description" => "Test expense",
       "category" => "groceries",
-      "date" => Date.utc_today()
+      "date" => Date.utc_today(),
+      "currency" => "USD"
     })
   end
 
