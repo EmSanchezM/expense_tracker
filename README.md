@@ -70,10 +70,17 @@ Description project: [Roadmap.sh Backend](https://roadmap.sh/projects/expense-tr
 4. **Generate test data (optional):**
    ```bash
    mix run priv/repo/seeds.exs
+
+   # Or run directly in IEx
+   ExpenseTrackerApi.SeedData.SeedDataGenerator.run()
    ```
-   This will create test users and sample expenses for development:
-   - `juan.perez@example.com` (password: `password123`)
-   - `maria.garcia@example.com` (password: `password123`)
+
+   ## Test Credentials
+
+   After seeding, you can authenticate with these users:
+
+   - **Email**: `juan.perez@example.com` | **Password**: `password123`
+   - **Email**: `maria.garcia@example.com` | **Password**: `password123`
 
 ### Running the Application
 

@@ -50,18 +50,24 @@ defmodule ExpenseTrackerApi.SeedData.ExpenseFactory do
     shuffled_temporal = Enum.shuffle(temporal_distribution)
 
     # Generate expenses
-    Enum.zip(shuffled_categories, shuffled_temporal)
+    expenses = Enum.zip(shuffled_categories, shuffled_temporal)
     |> Enum.map(fn {category, time_period} ->
       date = random_date_in_period(date_ranges[time_period])
 
-      %{
+      expense_data = %{
         amount: random_amount_for_category(category),
         description: random_description_for_category(category),
         category: category,
         date: date,
         user_id: user_id
       }
+
+      # Validate expense data before returning
+      validate_expense_data!(expense_data)
+      expense_data
     end)
+
+    expenses
   end
 
   @doc """
@@ -180,5 +186,41 @@ defmodule ExpenseTrackerApi.SeedData.ExpenseFactory do
     days_diff = Date.diff(end_date, start_date)
     random_days = Enum.random(0..days_diff)
     Date.add(start_date, random_days)
+  end
+
+  @doc """
+  Validates expense data to ensure it meets schema requirements before insertion.
+
+  Raises an error if the expense data is invalid.
+
+  ## Parameters
+
+    * `expense_data` - Map containing expense data to validate
+
+  ## Examples
+
+      iex> ExpenseTrackerApi.SeedData.ExpenseFactory.validate_expense_data!(%{amount: Decimal.new("50.00"), description: "Test", category: :groceries, user_id: 1})
+      :ok
+
+      iex> ExpenseTrackerApi.SeedData.ExpenseFactory.validate_expense_data!(%{amount: Decimal.new("-10.00"), description: "", category: :invalid, user_id: nil})
+      ** (ArgumentError) Invalid expense data: amount: must be greater than 0, description: can't be blank, category: is invalid, user_id: can't be blank
+  """
+  def validate_expense_data!(expense_data) do
+    changeset = ExpenseTrackerApi.Expenses.Expense.changeset(%ExpenseTrackerApi.Expenses.Expense{}, expense_data)
+
+    if changeset.valid? do
+      :ok
+    else
+      errors = format_changeset_errors(changeset)
+      raise ArgumentError, "Invalid expense data: #{errors}"
+    end
+  end
+
+  # Private helper functions
+
+  defp format_changeset_errors(changeset) do
+    changeset.errors
+    |> Enum.map(fn {field, {message, _}} -> "#{field}: #{message}" end)
+    |> Enum.join(", ")
   end
 end

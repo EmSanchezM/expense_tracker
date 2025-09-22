@@ -21,10 +21,14 @@ defmodule ExpenseTrackerApi.SeedData.UserFactory do
       ]
   """
   def create_test_users do
-    [
+    users = [
       user_data(1),
       user_data(2)
     ]
+
+    # Validate all user data before returning
+    Enum.each(users, &validate_user_data!/1)
+    users
   end
 
   @doc """
@@ -60,5 +64,41 @@ defmodule ExpenseTrackerApi.SeedData.UserFactory do
 
   def user_data(index) when index > 2 do
     raise ArgumentError, "Only user indices 1 and 2 are supported, got: #{index}"
+  end
+
+  @doc """
+  Validates user data to ensure it meets schema requirements before insertion.
+
+  Raises an error if the user data is invalid.
+
+  ## Parameters
+
+    * `user_data` - Map containing user data to validate
+
+  ## Examples
+
+      iex> ExpenseTrackerApi.SeedData.UserFactory.validate_user_data!(%{name: "Test", email: "test@example.com", password: "password123"})
+      :ok
+
+      iex> ExpenseTrackerApi.SeedData.UserFactory.validate_user_data!(%{name: "", email: "invalid", password: "123"})
+      ** (ArgumentError) Invalid user data: name: can't be blank, email: must have the @ sign and no spaces, password: should be at least 6 character(s)
+  """
+  def validate_user_data!(user_data) do
+    changeset = ExpenseTrackerApi.Accounts.User.changeset(%ExpenseTrackerApi.Accounts.User{}, user_data)
+
+    if changeset.valid? do
+      :ok
+    else
+      errors = format_changeset_errors(changeset)
+      raise ArgumentError, "Invalid user data: #{errors}"
+    end
+  end
+
+  # Private helper functions
+
+  defp format_changeset_errors(changeset) do
+    changeset.errors
+    |> Enum.map(fn {field, {message, _}} -> "#{field}: #{message}" end)
+    |> Enum.join(", ")
   end
 end
