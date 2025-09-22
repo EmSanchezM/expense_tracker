@@ -45,6 +45,12 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
           description: "Date when the expense occurred (YYYY-MM-DD)",
           example: "2024-01-15"
         },
+        currency: %Schema{
+          type: :string,
+          description: "ISO 4217 currency code (3 uppercase letters)",
+          pattern: "^[A-Z]{3}$",
+          example: "USD"
+        },
         user_id: %Schema{
           type: :integer,
           description: "ID of the user who owns this expense",
@@ -63,13 +69,14 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
           example: "2024-01-15T10:30:00Z"
         }
       },
-      required: [:amount, :description, :category, :user_id],
+      required: [:amount, :description, :category, :currency, :user_id],
       example: %{
         id: 1,
         amount: 25.50,
         description: "Grocery shopping at local market",
         category: "groceries",
         date: "2024-01-15",
+        currency: "USD",
         user_id: 1,
         inserted_at: "2024-01-15T10:30:00Z",
         updated_at: "2024-01-15T10:30:00Z"
@@ -109,6 +116,12 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
           format: :date,
           description: "Date when the expense occurred (YYYY-MM-DD). Defaults to today if not provided",
           example: "2024-01-15"
+        },
+        currency: %Schema{
+          type: :string,
+          description: "ISO 4217 currency code (3 uppercase letters). Defaults to USD if not provided",
+          pattern: "^[A-Z]{3}$",
+          example: "USD"
         }
       },
       required: [:amount, :description],
@@ -116,7 +129,8 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
         amount: 25.50,
         description: "Grocery shopping at local market",
         category: "groceries",
-        date: "2024-01-15"
+        date: "2024-01-15",
+        currency: "USD"
       }
     })
   end
@@ -143,6 +157,7 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
           description: "Grocery shopping at local market",
           category: "groceries",
           date: "2024-01-15",
+          currency: "USD",
           user_id: 1,
           inserted_at: "2024-01-15T10:30:00Z",
           updated_at: "2024-01-15T10:30:00Z"
@@ -205,6 +220,7 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
             description: "Grocery shopping at local market",
             category: "groceries",
             date: "2024-01-15",
+            currency: "USD",
             user_id: 1,
             inserted_at: "2024-01-15T10:30:00Z",
             updated_at: "2024-01-15T10:30:00Z"
@@ -215,6 +231,7 @@ defmodule ExpenseTrackerApiWeb.Schemas.ExpenseSchema do
             description: "Coffee and pastry",
             category: "leisure",
             date: "2024-01-14",
+            currency: "EUR",
             user_id: 1,
             inserted_at: "2024-01-14T08:15:00Z",
             updated_at: "2024-01-14T08:15:00Z"

@@ -39,6 +39,7 @@ defmodule ExpenseTrackerApiWeb.ExpenseJSON do
       description: expense.description,
       category: expense.category,
       date: expense.date,
+      currency: expense.currency,
       inserted_at: expense.inserted_at,
       updated_at: expense.updated_at
     }
