@@ -59,6 +59,7 @@ defmodule ExpenseTrackerApi.SeedData.ExpenseFactory do
         description: random_description_for_category(category),
         category: category,
         date: date,
+        currency: random_currency_for_expense(),
         user_id: user_id
       }
 
@@ -103,6 +104,26 @@ defmodule ExpenseTrackerApi.SeedData.ExpenseFactory do
     cents = Enum.random(0..99)
 
     Decimal.new("#{dollars}.#{String.pad_leading(Integer.to_string(cents), 2, "0")}")
+  end
+
+  @doc """
+  Generates a random currency code for expenses.
+
+  Most expenses will be in USD (80%), with some in EUR (15%) and MXN (5%)
+  to provide variety for testing currency functionality.
+
+  ## Examples
+
+      iex> ExpenseTrackerApi.SeedData.ExpenseFactory.random_currency_for_expense()
+      "USD"
+  """
+  def random_currency_for_expense do
+    # Weighted distribution: 80% USD, 15% EUR, 5% MXN
+    case Enum.random(1..100) do
+      n when n <= 80 -> "USD"
+      n when n <= 95 -> "EUR"
+      _ -> "MXN"
+    end
   end
 
   @doc """
