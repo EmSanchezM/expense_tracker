@@ -76,7 +76,22 @@ if config_env() == :prod do
       """
 
   config :expense_tracker_api, ExpenseTrackerApi.Accounts.Guardian,
+    issuer: "expense_tracker_api",
     secret_key: guardian_secret_key
+
+  # Configure logging level for production
+  log_level = System.get_env("LOG_LEVEL", "info") |> String.to_atom()
+  config :logger, level: log_level
+
+  # Configure CORS origins for production
+  cors_origins =
+    case System.get_env("CORS_ORIGINS") do
+      nil -> ["https://yourdomain.com"]  # Default production origin
+      origins -> String.split(origins, ",") |> Enum.map(&String.trim/1)
+    end
+
+  # Note: CORS configuration is handled at compile time in router.ex
+  # Make sure to set CORS_ORIGINS environment variable before compilation
 
   # ## SSL Support
   #
